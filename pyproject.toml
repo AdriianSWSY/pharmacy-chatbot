@@ -1,0 +1,10 @@
+[project]
+name = "ai-agent-call-assistant"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.116.2",
+    "langchain>=0.3.27",
+]
