@@ -9,5 +9,28 @@ wheels/
 # Virtual environments
 .venv
 
+# Environment and configuration files
+.env
+.env.*
+!.env.example
+
+# Secrets and sensitive data
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
 # AI tooling
-spec/
+# spec/

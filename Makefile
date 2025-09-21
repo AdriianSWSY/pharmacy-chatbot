@@ -1,4 +1,4 @@
-.PHONY: activate deactivate run
+.PHONY: activate deactivate run validate
 
 # Activate virtual environment (show instructions)
 activate:
@@ -17,3 +17,7 @@ deactivate:
 # Run FastAPI server with uv
 run:
 	uv run python main.py
+
+# Validate code quality with pre-commit hooks
+validate:
+	uv run pre-commit run --all-files
