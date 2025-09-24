@@ -1,71 +1,33 @@
 """
 Configuration settings manager for the AI Agent Call Assistant.
+
+Simple environment-based configuration using pydantic-settings.
 """
 
 import os
 from functools import lru_cache
 from config.base import BaseConfig
-from config.development import DevelopmentConfig
-from config.staging import StagingConfig
-from config.production import ProductionConfig
-
-
-class ConfigFactory:
-    """Factory for creating appropriate configuration instances."""
-
-    _configs = {
-        "development": DevelopmentConfig,
-        "dev": DevelopmentConfig,
-        "staging": StagingConfig,
-        "stage": StagingConfig,
-        "production": ProductionConfig,
-        "prod": ProductionConfig,
-    }
-
-    @classmethod
-    def get_config(cls, env: str = None) -> BaseConfig:
-        """
-        Get configuration instance for the specified environment.
-
-        Args:
-            env: Environment name. If None, reads from ENVIRONMENT env var
-
-        Returns:
-            Configuration instance for the environment
-
-        Raises:
-            ValueError: If environment is not supported
-        """
-        if env is None:
-            env = os.getenv("ENVIRONMENT", "development")
-
-        env = env.lower()
-
-        if env not in cls._configs:
-            available = ", ".join(cls._configs.keys())
-            raise ValueError(f"Unsupported environment '{env}'. Available: {available}")
-
-        config_class = cls._configs[env]
-
-        # Create instance - pydantic-settings handles environment loading automatically
-        return config_class()
-
-    @classmethod
-    def list_environments(cls) -> list:
-        """Get list of supported environments."""
-        return list(cls._configs.keys())
 
 
 @lru_cache
 def get_settings() -> BaseConfig:
     """
-    Get the current configuration settings (cached).
+    Get configuration based on environment.
+
+    The configuration is loaded from:
+    1. Environment variables
+    2. .env file (base configuration)
+    3. .env.{environment} file (environment-specific overrides)
 
     Returns:
-        Current configuration instance
+        Configuration instance for the current environment
     """
-    return ConfigFactory.get_config()
+    env = os.getenv("ENVIRONMENT", "development").lower()
+
+    # Create config with appropriate env files
+    # Pydantic-settings will handle all the loading and merging
+    return BaseConfig(_env_file=[".env", f".env.{env}"], environment=env)
 
 
-# Create global config instance (for backwards compatibility)
+# Create global settings instance
 settings = get_settings()

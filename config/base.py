@@ -31,6 +31,16 @@ class CacheConfig(BaseModel):
     ttl: int = Field(default=3600, description="Cache TTL in seconds (1 hour)")
 
 
+class AgentSettings(BaseModel):
+    """LangChain agent configuration."""
+
+    model: str = Field(default="gpt-4o-mini", description="LLM model to use")
+    temperature: float = Field(default=0.7, description="Model temperature")
+    max_tokens: int = Field(default=500, description="Max tokens per response")
+    memory_type: str = Field(default="buffer", description="Memory type")
+    session_timeout: int = Field(default=1800, description="Session timeout in seconds")
+
+
 class BaseConfig(BaseSettings):
     """Base configuration class using pydantic-settings for environment variable loading."""
 
@@ -56,3 +66,4 @@ class BaseConfig(BaseSettings):
         default_factory=lambda: PharmacyAPIConfig(base_url="https://api.example.com")
     )
     cache: CacheConfig = Field(default_factory=lambda: CacheConfig())
+    agent: AgentSettings = Field(default_factory=lambda: AgentSettings())

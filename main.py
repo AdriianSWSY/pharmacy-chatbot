@@ -1,7 +1,13 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from src.routes.api import api_router
-from config.settings import settings
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (must be before other imports)
+load_dotenv()
+
+# Now import everything else
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from src.routes.api import api_router  # noqa: E402
+from config.settings import settings  # noqa: E402
 
 app = FastAPI(
     title=settings.app_name,

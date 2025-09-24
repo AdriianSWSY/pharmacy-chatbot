@@ -23,9 +23,3 @@ class Pharmacy(BaseModel):
     city: str
     state: str
     prescriptions: List[Prescription]
-
-
-class PharmacySearchParams(BaseModel):
-    """Parameters for searching pharmacies."""
-
-    phone: str
