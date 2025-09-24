@@ -7,8 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 import logging
 from src.models.pharmacy import Pharmacy
 from src.services.pharmacy_service import PharmacyService
-from src.clients.pharmacy_api import PharmacyAPIClient
-from config.settings import settings
+from src.dependencies import get_pharmacy_service
 from src.endpoints.swagger.pharmacy_docs import (
     PHARMACY_SEARCH_RESPONSES,
     PHONE_SEARCH_PARAM_DOC,
@@ -18,24 +17,6 @@ from src.endpoints.swagger.pharmacy_docs import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def get_pharmacy_service() -> PharmacyService:
-    """
-    Dependency injection for pharmacy service.
-
-    Returns:
-        PharmacyService instance
-    """
-    # Create API client and service using configuration settings
-    api_client = PharmacyAPIClient(
-        base_url=settings.pharmacy_api.base_url,
-        timeout=settings.pharmacy_api.timeout,
-        retry_count=settings.pharmacy_api.retry_count,
-        retry_delay=settings.pharmacy_api.retry_delay,
-    )
-
-    return PharmacyService(api_client=api_client)
 
 
 @router.get(
@@ -105,7 +86,6 @@ async def search_pharmacy_by_phone(
         pharmacy = await service.search_by_phone(phone)
 
         if pharmacy is None:
-            # Return 404 for clarity that pharmacy wasn't found
             raise HTTPException(
                 status_code=404, detail=f"No pharmacy found with phone number: {phone}"
             )
@@ -113,18 +93,12 @@ async def search_pharmacy_by_phone(
         return pharmacy
 
     except ValueError as e:
-        # Invalid phone format
-        logger.warning(f"Invalid phone format provided: {phone}")
-        raise HTTPException(
-            status_code=400, detail=f"Invalid phone number format: {str(e)}"
-        )
-
+        logger.warning(f"Invalid phone format: {phone} - {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
-
     except Exception as e:
-        logger.error(f"Failed to search pharmacy: {e}")
+        logger.error(f"Search pharmacy failed: {e}")
         raise HTTPException(
             status_code=503,
             detail="Service temporarily unavailable. Please try again later.",

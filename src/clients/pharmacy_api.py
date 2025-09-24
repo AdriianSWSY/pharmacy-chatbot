@@ -4,7 +4,6 @@ Client for interacting with the external pharmacy API.
 
 import asyncio
 import logging
-import random
 from typing import List
 import httpx
 from src.models.pharmacy import Pharmacy
@@ -43,49 +42,48 @@ class PharmacyAPIClient:
             httpx.HTTPError: If the request fails after all retries
             ValueError: If the response data is invalid
         """
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            for attempt in range(self.retry_count):
-                try:
+        last_error = None
+
+        for attempt in range(self.retry_count):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.get(f"{self.base_url}/pharmacies")
                     response.raise_for_status()
 
-                    # Parse response data into Pharmacy models
+                    # Parse and return pharmacy data
                     data = response.json()
                     return [Pharmacy(**item) for item in data]
 
-                except httpx.TimeoutException as e:
-                    logger.warning(f"Request timeout on attempt {attempt + 1}: {e}")
-
-                except httpx.NetworkError as e:
-                    logger.warning(f"Network error on attempt {attempt + 1}: {e}")
-
-                except httpx.HTTPStatusError as e:
-                    logger.warning(
-                        f"HTTP {e.response.status_code} on attempt {attempt + 1}: {e.response.text[:200]}"
-                    )
-                    # Don't retry on 4xx errors (client errors)
-                    if 400 <= e.response.status_code < 500:
-                        logger.error(
-                            f"Client error {e.response.status_code}, not retrying"
-                        )
-                        raise
-
-                except ValueError as e:
-                    logger.error(f"Invalid JSON response on attempt {attempt + 1}: {e}")
-                    # JSON parsing errors shouldn't be retried
+            except httpx.HTTPStatusError as e:
+                # Don't retry client errors (4xx)
+                if 400 <= e.response.status_code < 500:
+                    logger.error(f"Client error {e.response.status_code}")
                     raise
 
-                except Exception as e:
-                    logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
-                    if attempt == self.retry_count - 1:
-                        raise
+                # Log server errors and continue to retry
+                last_error = e
+                logger.warning(
+                    f"Server error {e.response.status_code} on attempt {attempt + 1}"
+                )
 
-                # Apply retry logic for retryable errors
-                if attempt < self.retry_count - 1:
-                    # Exponential backoff with jitter
-                    delay = self.retry_delay * (2**attempt) + (random.random() * 0.1)
-                    logger.info(f"Retrying in {delay:.2f} seconds...")
-                    await asyncio.sleep(delay)
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                # Network issues - worth retrying
+                last_error = e
+                logger.warning(f"Network error on attempt {attempt + 1}: {e}")
 
-            logger.error(f"All {self.retry_count} attempts failed")
-            return []
+            except ValueError as e:
+                # JSON parsing error - don't retry
+                logger.error(f"Invalid JSON response: {e}")
+                raise
+
+            # Wait before retrying (except on last attempt)
+            if attempt < self.retry_count - 1:
+                delay = self.retry_delay * (2**attempt)  # Exponential backoff
+                logger.info(f"Retrying in {delay} seconds...")
+                await asyncio.sleep(delay)
+
+        # All retries failed - raise the last error
+        logger.error(f"All {self.retry_count} attempts failed")
+        if last_error:
+            raise last_error
+        raise httpx.RequestError("Failed to fetch pharmacies after all retries")
